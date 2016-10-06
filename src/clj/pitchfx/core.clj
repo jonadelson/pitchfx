@@ -7,11 +7,11 @@
             [compojure.handler :as handler]))
 
 (def db-spec
-  {:classname "com.mysql.jdbc.Driver"
-   :subprotocol "mysql"
-   :subname "//localhost:3306/pitchFX3"
+  {:subprotocol "mysql"
+   :subname "//pitchfx.c0oyv4h2ppxp.us-east-1.rds.amazonaws.com:3306/PitchFX"
    :user "root"
-   :password "password"})
+   :password "Maxx1492!"})
+
 
 (def the-query
   (-> (select :*)

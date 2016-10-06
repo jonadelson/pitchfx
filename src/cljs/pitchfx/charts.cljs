@@ -56,7 +56,7 @@
                                            (-> tip
                                                (.html (str "<div>" (->> (map #(str "<div>" % "</div>") ny) (apply str)) "</div>"))
                                                (.style "left" (str (.-pageX (.-event js/d3)) "px"))
-                                               (.style "top" (str (- (.-pageY (.-event js/d3)) 200) "px"))))))
+                                               (.style "top" (str (- (.-pageY (.-event js/d3)) 50) "px"))))))
                 (.on "mouseout" (fn [d] (-> tip
                                            .transition
                                            (.duration 500)
