@@ -8,8 +8,9 @@
             [clojure.reader :as r]))
 
 (def app-db
-  {:chosen-group nil
-   :cluster-choice nil
+  {:loaded? false
+   :chosen-group 1
+   :cluster-choice 50
    :cluster-choices (->> (for [i (range 10 210 10)]
                            {:id i :label (str i)})
                          (into []))
@@ -55,6 +56,10 @@
   [db [_ s]]
   (assoc db :chosen-stat s))
 
+(defn set-loaded
+  [db [_ t]]
+  (assoc db :loaded? t))
+
 (re-frame/reg-event-db :initialize-db (fn [_] app-db))
 (re-frame/reg-event-db :set-app-data set-app-data)
 (re-frame/reg-event-db :set-cluster-choice set-cluster-choice)
@@ -65,3 +70,4 @@
 (re-frame/reg-event-db :change-pitcher change-pitcher)
 (re-frame/reg-event-db :set-pitcher-chosen set-pitcher-chosen)
 (re-frame/reg-event-db :set-chosen-stat set-chosen-stat)
+(re-frame/reg-event-db :set-loaded set-loaded)

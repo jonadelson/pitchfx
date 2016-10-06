@@ -46,6 +46,10 @@
   [db _]
   (get db :chosen-stat))
 
+(defn loaded?
+  [db _]
+  (get db :loaded?))
+
 (re-frame/reg-sub :chosen-group chosen-group)
 (re-frame/reg-sub :app-data app-data)
 (re-frame/reg-sub :cluster-choices cluster-choices)
@@ -55,3 +59,4 @@
 (re-frame/reg-sub :chosen-pitcher chosen-pitcher)
 (re-frame/reg-sub :pitcher-chosen? pitcher-chosen?)
 (re-frame/reg-sub :chosen-stat chosen-stat)
+(re-frame/reg-sub :loaded? loaded?)

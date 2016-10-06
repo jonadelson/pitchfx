@@ -25,6 +25,7 @@
 (defn ^:export init []
   (re-frame/dispatch-sync [:initialize-db])
   (go (let [response (<! (http/get "/all_data"))]
-        (re-frame/dispatch [:set-app-data (->> response :body r/read-string)])))
+        (re-frame/dispatch [:set-app-data (->> response :body r/read-string)])
+        (re-frame/dispatch [:set-loaded true])))
   (dev-setup)
   (mount-root))

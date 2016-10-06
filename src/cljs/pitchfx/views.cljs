@@ -56,7 +56,7 @@
        :on-change #(re-frame/dispatch [:change-view %])
        :style {:width "125px"}])))
 
-(defn top-bar
+(defn side-panel
   []
   (let [chosen-group (re-frame/subscribe [:chosen-group])
         cluster-choice (re-frame/subscribe [:cluster-choice])
@@ -170,13 +170,16 @@
 ;;chart/histogram filtered "Fangraphs WAR" :war {:height 600 :width 700 :x-lim [-2 10]}
 
 (defn main-panel []
-  (let []
+  (let [loaded? (re-frame/subscribe [:loaded?])]
     (fn []
-      [:div
-       [box/h-box
-        :gap "50px"
-        :children [[box/v-box
-                    :children [[top-bar]]]
-                   [box/h-box
-                    :children [[data-area]]]]
-        :style {:margin-top "10px" :margin-left "10px"}]])))
+      (if @loaded?
+        [:div
+         [box/h-box
+          :gap "50px"
+          :children [[box/v-box
+                      :children [[side-panel]]
+                      :style {:margin-top "100px"}]
+                     [box/h-box
+                      :children [[data-area]]]]
+          :style {:margin-top "10px" :margin-left "10px"}]]
+        [:div]))))
