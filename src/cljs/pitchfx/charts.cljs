@@ -116,5 +116,4 @@
             :label title
             :level :level2]
            [:div.chart-area]]
-          :align :center
-          :width "700px"]])})))
+          :align :center]])})))

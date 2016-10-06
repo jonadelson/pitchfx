@@ -46,16 +46,20 @@
 (defn data-grid []
   (let [data (re-frame/subscribe [:filtered])
         pitcher-chosen? (re-frame/subscribe [:pitcher-chosen?])
-        chosen-pitcher (re-frame/subscribe [:chosen-pitcher])]
+        chosen-pitcher (re-frame/subscribe [:chosen-pitcher])
+        window-dims (re-frame/subscribe [:window-dims])]
     (fn []
       (when @data
         (let [data (mapv #(zipmap col-strs ((apply juxt col-kws) %)) @data)
+              [w h] @window-dims
+              width (- w 400)
+              height (* 0.9 h)
               make-cell (fn [args]
                           (let [{:strs [columnKey rowIndex]} (js->clj args)]
                             (reagent/as-element [Cell (get-in data [rowIndex columnKey])])))]
           [:div
-           [Table {:width        900
-                   :height       700
+           [Table {:width width
+                   :height height
                    :rowHeight    50
                    :rowsCount    (count data)
                    :headerHeight 50

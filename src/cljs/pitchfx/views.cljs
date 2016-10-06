@@ -9,28 +9,34 @@
             [clojure.string :as s]
             [re-com.misc :as misc]
             [pitchfx.charts :as chart]
+            [re-com.text :as text]
             ))
 
 (defn autocomplete
   []
   (let [data (re-frame/subscribe [:app-data])
         cluster-choice (re-frame/subscribe [:cluster-choice])
-        pitcher-chosen? (re-frame/subscribe [:pitcher-chosen?])]
+        pitcher-chosen? (re-frame/subscribe [:pitcher-chosen?])
+        chosen-pitcher (re-frame/subscribe [:chosen-pitcher])]
     (fn []
       (when @data
-        [box/h-box
-         :gap "10px"
-         :children [[ac/typeahead
+        [box/v-box
+         :children [[misc/checkbox
+                     :model @pitcher-chosen?
+                     :label "Enable Pitcher Filtering"
+                     :on-change #(re-frame/dispatch [:set-pitcher-chosen (not @pitcher-chosen?)])]
+                    [ac/typeahead
                      :data-source (fn [str]
                                     (->> (map #(select-keys % [:mlb_id :name :year]) @data)
                                          (filter (fn [d] (-> d :name s/lower-case (s/includes? (s/lower-case str)))))
                                          (take 10)))
                      :render-suggestion (fn [d]
                                           [:div (str (:name d) " (" (:year d) ")")])
-                     :suggestion-to-string (fn [d] (str (:name d) " (" (:year d) ")"))
+                     :suggestion-to-string (fn [d] (str (:name d)))
                      :change-on-blur? true
                      :width "230px"
                      :disabled? (not @pitcher-chosen?)
+                     :model {:mlb_id 12345 :name "Filter by Pitcher ..." :year 1234}
                      :on-change #(do
                                    (let [pitcher [(:mlb_id %) (:year %)]
                                          kw (-> (str "c" @cluster-choice) keyword)]
@@ -41,20 +47,82 @@
                                                                                   first
                                                                                   kw
                                                                                   inc)]))))]
-                    [misc/checkbox
-                     :model @pitcher-chosen?
-                     :on-change #(re-frame/dispatch [:set-pitcher-chosen (not @pitcher-chosen?)])]]]))))
+                    ]]))))
 
 (defn view-tabs
   []
   (let [view (re-frame/subscribe [:view])]
     (fn []
-      [tab/horizontal-tabs
+      [tab/horizontal-pill-tabs
        :tabs [{:id :data :label "data"}
               {:id :graphs :label "graphs"}]
        :model @view
        :on-change #(re-frame/dispatch [:change-view %])
-       :style {:width "125px"}])))
+       :style {:width "125px" :text-align "center"}])))
+
+(defn cluster-labels
+  []
+  [:div
+   [box/h-box
+    :children [[:code {:style {:width "125px"
+                               :text-align "center"}}
+                "# of Clusters"]
+               [:code {:style {:width "125px"
+                               :text-align "center"}}
+                "Group Number"]]]])
+
+#_[text/label
+ :label "# of Clusters"
+   :width "125px"]
+
+(defn clusters
+  []
+  (let [chosen-group (re-frame/subscribe [:chosen-group])
+        cluster-choice (re-frame/subscribe [:cluster-choice])
+        cluster-choices (re-frame/subscribe [:cluster-choices])
+        data (re-frame/subscribe [:app-data])
+        chosen-pitcher (re-frame/subscribe [:chosen-pitcher])
+        pitcher-chosen? (re-frame/subscribe [:pitcher-chosen?])]
+    (fn []
+      [:div [box/v-box
+             :children
+             [[cluster-labels]
+              [box/h-box
+               :children [[dd/single-dropdown
+                           :choices @cluster-choices
+                           :model @cluster-choice
+                           :placeholder "Choose Number of Clusters"
+                           :on-change #(do
+                                         (re-frame/dispatch [:set-cluster-choice %])
+                                         (let [kw (-> (str "c" %) keyword)]
+                                           (when @pitcher-chosen?
+                                             (re-frame/dispatch [:set-chosen-group (->> @data
+                                                                                        (filter (fn [d] (= [(:mlb_id d) (:year d)] @chosen-pitcher)))
+                                                                                        first
+                                                                                        kw
+                                                                                        inc)]))))
+                           :width "125px"
+                           :style {:text-align "center"}]
+                          [dd/single-dropdown
+                           :choices (->> (for [i (range 1 (inc @cluster-choice))]
+                                           {:id i :label (str i)})
+                                         (into []))
+                           :model @chosen-group
+                           :placeholder "Pick Cluster Number"
+                           :on-change #(re-frame/dispatch [:set-chosen-group %])
+                           :width "125px"
+                           :style {:text-align "center"}]]]
+              [box/h-box
+               :children [[rc/button
+                           :label "Previous Group"
+                           :on-click #(when (> @chosen-group 1)
+                                        (re-frame/dispatch [:dec-chosen-group @chosen-group]))
+                           :style {:width "125px"}]
+                          [rc/button
+                           :label "Next Group"
+                           :on-click #(when (< @chosen-group @cluster-choice)
+                                        (re-frame/dispatch [:inc-chosen-group @chosen-group]))
+                           :style {:width "125px"}]]]]]])))
 
 (defn side-panel
   []
@@ -68,42 +136,9 @@
       (when @data
         [:div
          [box/v-box
-          :gap "10px"
-          :children [[box/h-box
-                      :children [[dd/single-dropdown
-                                  :choices @cluster-choices
-                                  :model @cluster-choice
-                                  :placeholder "Choose Number of Clusters"
-                                  :on-change #(do
-                                                (re-frame/dispatch [:set-cluster-choice %])
-                                                (let [kw (-> (str "c" %) keyword)]
-                                                  (when @pitcher-chosen?
-                                                    (re-frame/dispatch [:set-chosen-group (->> @data
-                                                                                               (filter (fn [d] (= [(:mlb_id d) (:year d)] @chosen-pitcher)))
-                                                                                               first
-                                                                                               kw
-                                                                                               inc)]))))
-                                  :width "125px"]
-                                 [dd/single-dropdown
-                                  :choices (->> (for [i (range 1 (inc @cluster-choice))]
-                                                  {:id i :label (str i)})
-                                                (into []))
-                                  :model @chosen-group
-                                  :placeholder "Pick Cluster Number"
-                                  :on-change #(re-frame/dispatch [:set-chosen-group %])
-                                  :width "125px"]]]
-                     [box/h-box
-                      :children [[rc/button
-                                  :label "Previous Group"
-                                  :on-click #(when (> @chosen-group 1)
-                                               (re-frame/dispatch [:dec-chosen-group @chosen-group]))
-                                  :style {:width "125px"}]
-                                 [rc/button
-                                  :label "Next Group"
-                                  :on-click #(when (< @chosen-group @cluster-choice)
-                                               (re-frame/dispatch [:inc-chosen-group @chosen-group]))
-                                  :style {:width "125px"}]]]
-                     [view-tabs]
+          :gap "20px"
+          :children [[view-tabs]
+                     [clusters]
                      [autocomplete]
                      ]]]))))
 
@@ -141,27 +176,31 @@
 
 (defn chart-area
   [data]
-  (let [chosen-stat (re-frame/subscribe [:chosen-stat])]
+  (let [chosen-stat (re-frame/subscribe [:chosen-stat])
+        window-dims (re-frame/subscribe [:window-dims])]
     (fn [data]
-      [:div
-       [box/h-box
-        :children [[chart/histogram data
-                    (stat->title @chosen-stat)
-                    @chosen-stat
-                    {:height 600 :width 700 :x-lim (stat->domain @chosen-stat)}]
-                   [tab/vertical-pill-tabs
-                    :tabs (->> (for [stat stats]
-                                 {:id stat :label (stat->tab stat)})
-                               (into []))
-                    :model @chosen-stat
-                    :on-change #(re-frame/dispatch [:set-chosen-stat %])]]]])))
+      (let [[w h] @window-dims]
+        [:div
+         [box/h-box
+          :children [[chart/histogram data
+                      (stat->title @chosen-stat)
+                      @chosen-stat
+                      {:height (* h 0.75) :width (- w 600) :x-lim (stat->domain @chosen-stat)}]
+                     [tab/vertical-pill-tabs
+                      :tabs (->> (for [stat stats]
+                                   {:id stat :label (stat->tab stat)})
+                                 (into []))
+                      :model @chosen-stat
+                      :on-change #(re-frame/dispatch [:set-chosen-stat %])]]
+          :width (str (- w 400) "px")]]))))
 
 
 
 (defn data-area
   []
   (let [view (re-frame/subscribe [:view])
-        filtered (re-frame/subscribe [:filtered])]
+        filtered (re-frame/subscribe [:filtered])
+        window-dims (re-frame/subscribe [:window-dims])]
     (fn []
       (condp = @view
         :data [dt/data-grid]
@@ -178,8 +217,13 @@
           :gap "50px"
           :children [[box/v-box
                       :children [[side-panel]]
-                      :style {:margin-top "100px"}]
+                      :style {:margin-top "20px"}
+                      :width "300px"]
                      [box/h-box
                       :children [[data-area]]]]
-          :style {:margin-top "10px" :margin-left "10px"}]]
-        [:div]))))
+          :style {:margin-top "30px" :margin-left "10px"}]]
+        [:div
+         [box/h-box
+          :children [[misc/throbber
+                      :size :large
+                      :color "steelblue"]]]]))))

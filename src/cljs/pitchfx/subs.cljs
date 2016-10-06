@@ -50,6 +50,10 @@
   [db _]
   (get db :loaded?))
 
+(defn window-dims
+  [db _]
+  (get db :window-dims))
+
 (re-frame/reg-sub :chosen-group chosen-group)
 (re-frame/reg-sub :app-data app-data)
 (re-frame/reg-sub :cluster-choices cluster-choices)
@@ -60,3 +64,4 @@
 (re-frame/reg-sub :pitcher-chosen? pitcher-chosen?)
 (re-frame/reg-sub :chosen-stat chosen-stat)
 (re-frame/reg-sub :loaded? loaded?)
+(re-frame/reg-sub :window-dims window-dims)
