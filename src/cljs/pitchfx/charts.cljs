@@ -48,25 +48,23 @@
                 (.attr "x" 1)
                 (.attr "width" (- (x (-> (aget bins 0) .-x1)) (x (-> (aget bins 0) .-x0)) 1))
                 (.attr "height" (fn [d] (- height (y (.-length d)))))
-                (.on "mouseover" (fn [d] (let [transition (-> (.transition tip)
-                                                              (.duration 200)
-                                                              (.style "opacity" 0.9))
-                                               ny (->> d (into #{}) (mapcat stat->name-year) (into #{}))]
-
-                                           (-> tip
-                                               (.html (str "<div>" (->> (map #(str "<div>" % "</div>") ny) (apply str)) "</div>"))
-                                               (.style "left" (str (.-pageX (.-event js/d3)) "px"))
-                                               (.style "top" (str (- (.-pageY (.-event js/d3)) 50) "px"))))))
-                (.on "mouseout" (fn [d] (-> tip
-                                           .transition
-                                           (.duration 500)
-                                           (.style "opacity" 0)))))
-        bar (-> (.append bar "text")
-                (.attr "dy" ".75em")
-                (.attr "y" 200)
-                (.attr "x" (/ (- (x (-> (aget bins 0) .-x1)) (x (-> (aget bins 0) .-x0))) 2))
-                (.attr "text-anchor" "middle")
-                (.text (fn [d] (formatCount (.-length d)))))
+                (.on "mouseover" (fn [d] (this-as this (let [transition (-> (.transition tip)
+                                                                            (.duration 200)
+                                                                            (.style "opacity" 0.9))
+                                                             ny (->> d (into #{}) (mapcat stat->name-year) (into #{}))]
+                                                         (-> (.select js/d3 this)
+                                                             (.style "fill" "red"))
+                                                         (-> tip
+                                                             (.html (str "<div>" (->> (map #(str "<div>" % "</div>") ny) (apply str)) "</div>"))
+                                                             (.style "left" (str (.-pageX (.-event js/d3)) "px"))
+                                                             (.style "top" (str (- (.-pageY (.-event js/d3)) 50) "px")))))))
+                (.on "mouseout" (fn [d] (this-as this
+                                          (-> (.select js/d3 this)
+                                              (.style "fill" "steelblue"))
+                                          (-> tip
+                                              .transition
+                                              (.duration 500)
+                                              (.style "opacity" 0))))))
         svg (-> (.append svg "g")
                 (.attr "class" "axis axis--x")
                 (.attr "transform" (str "translate(0," height ")"))
@@ -74,18 +72,120 @@
         svg (-> (.append svg "g")
                 (.attr "class" "axis axis--y")
                 (.attr "transform" (str "translate(0," (- height)")"))
-                (.call (.axisLeft js/d3 y)))
-        ;;tip
-        #_(-> (.tip js/d3)
-                (.attr "class" "d3-tip")
-                (.offset #js [-10 0])
-                (.html (fn [d] )))]))
+                (.call (.axisLeft js/d3 y)))]))
+
+(def cluster-cols
+  (map #(-> (str "cluster_" %) keyword) (range 500)))
+
+(defn draw-cluster-counts
+  [data props]
+  (let [data (->> (map (apply juxt cluster-cols) @data)
+                  (map (fn [c] (map #(if % % 0) c)))
+                  (apply map +)
+                  (map (fn [i c] {:cluster i :count c}) (range 500))
+                  (sort-by #(- (:count %)))
+                  (take 50))
+        clusters (map :cluster data)
+        counts (map :count data)
+        max-val (apply max counts)
+        data (clj->js counts)
+        clusters (clj->js clusters)
+        margin {:top 10 :right 30 :bottom 30 :left 70}
+        width (- (:width props) (:left margin) (:right margin))
+        height (- (:height props) (:top margin) (:bottom margin))
+        bar-height (/ height (count counts))
+        x (-> (.scaleLinear js/d3)
+              (.domain #js [0 max-val])
+              (.range #js [0 width]))
+        y (-> (.scaleLinear js/d3)
+              (.domain #js [0 500])
+              (.range #js [height 0]))
+        svg (-> (.select js/d3 ".chart-area")
+                (.append "svg")
+                (.attr "width" (+ width (:left margin) (:right margin)))
+                (.attr "height" (+ height (:top margin) (:bottom margin)))
+                (.append "g")
+                (.attr "transform" (str "translate(" (:left margin) "," (:top margin) ")")))
+        bar (-> (.selectAll svg ".bar")
+                (.data data)
+                .enter
+                (.append "g")
+                (.attr "class" "bar")
+                (.attr "transform" (fn [d i] (str "translate(" 0 "," (* i bar-height) ")"))))
+        bar (-> (.append bar "rect")
+                (.attr "width" (fn [d] (x d)))
+                (.attr "height" bar-height)
+                (.on "mouseover" (fn [d i]
+                                   (this-as this
+                                     (-> (.select js/d3 this)
+                                         (.style "fill" "red"))
+                                     (re-frame/dispatch [:set-pitch-cluster (aget clusters i)]))))
+                (.on "mouseout" (fn [d]
+                                  (this-as this
+                                    (-> (.select js/d3 this)
+                                        (.style "fill" "steelblue"))))))
+        svg (-> (.append svg "g")
+                (.attr "class" "axis axis--x")
+                (.attr "transform" (str "translate(0," height ")"))
+                (.call (.axisBottom js/d3 x)))]))
+
+(def pitch-types
+  [:fa :ff :ft :fc :fs :si :sl :cu :kc :ep :ch :sc :kn])
+
+(def pitch-names
+  ["Fastball"
+   "4-Seam Fastball"
+   "2-Seam Fastball"
+   "Cut Fastball"
+   "Split-finger Fastball"
+   "Sinker"
+   "Slider"
+   "Curveball"
+   "Knuckle Curve"
+   "Ephuus"
+   "Change-up"
+   "Screwball"
+   "Knuckleball"])
+
+(def pitch-type->name (zipmap pitch-types pitch-names))
+
+(defn cluster-attr
+  []
+  (let [pitch-cluster (re-frame/subscribe [:pitch-cluster])]
+    (fn []
+      (let [x (->> (select-keys @pitch-cluster pitch-types)
+                   (reduce (fn [acc [k v]]
+                             (if v
+                               (assoc acc k v)
+                               acc)) {})
+                   (into [])
+                   (sort-by #(- (second %))))
+            pt (pitch-type->name (-> x first first))
+            velo (:start_speed @pitch-cluster)
+            px (:px @pitch-cluster)
+            pz (:pz @pitch-cluster)
+            pfx_x (:pfx_x @pitch-cluster)
+            pfx_z (:pfx_z @pitch-cluster)
+            bl (:break_length @pitch-cluster)]
+        [:div
+         [:div pt]
+         [:div velo]
+         [:div px]
+         [:div pz]
+         [:div pfx_x]
+         [:div pfx_z]
+         [:div bl]]))))
+
 
 (defn render-histogram
   [data stat props]
   (-> js/d3 (.select "svg") .remove)
   (draw-histogram data stat props))
 
+(defn render-cluster-counts
+  [data props]
+  (-> js/d3 (.select "svg") .remove)
+  (draw-cluster-counts data props))
 
 (defn histogram [args]
   (let [dom-node (reagent/atom nil)]
@@ -116,4 +216,37 @@
             :label title
             :level :level2]
            [:div.chart-area]]
+          :align :center]])})))
+
+
+(defn cluster-counts [args]
+  (let [dom-node (reagent/atom nil)]
+    (reagent/create-class
+     {:component-did-update
+      (fn [this old-argv]
+        (let [[_ data props] (reagent/argv this)]
+          ;; This is where we perform our d3.
+          (render-cluster-counts data props)))
+
+      :component-did-mount
+      (fn [this]
+        (let [node (reagent/dom-node this)]
+          ;; This will trigger a re-render of the component.
+          (reset! dom-node node)))
+
+      :reagent-render
+      (fn [data props ...]
+        ;; Necessary for Reagent to see that we depend on the dom-node and
+        ;; args r/atoms.  Note: we don't render D3 at this point.  We have
+        ;; to wait for the update.
+        @dom-node
+        @data
+        [:div
+         [box/v-box
+          :children
+          [[text/title
+            :label "Cluster Counts"
+            :level :level2]
+           [:div.chart-area]
+           [cluster-attr]]
           :align :center]])})))

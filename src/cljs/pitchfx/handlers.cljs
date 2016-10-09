@@ -19,7 +19,9 @@
    :view :data
    :pitcher-chosen? false
    :chosen-stat :war
-   :window-dims nil})
+   :window-dims nil
+   :cluster-attrs nil
+   :pitch-cluster nil})
 
 (defn set-app-data
   [db [_ response]]
@@ -65,6 +67,14 @@
   [db [_ d]]
   (assoc db :window-dims d))
 
+(defn set-cluster-attrs
+  [db [_ d]]
+  (assoc db :cluster-attrs d))
+
+(defn set-pitch-cluster
+  [db [_ c]]
+  (assoc db :pitch-cluster c))
+
 (re-frame/reg-event-db :initialize-db (fn [_] app-db))
 (re-frame/reg-event-db :set-app-data set-app-data)
 (re-frame/reg-event-db :set-cluster-choice set-cluster-choice)
@@ -77,3 +87,5 @@
 (re-frame/reg-event-db :set-chosen-stat set-chosen-stat)
 (re-frame/reg-event-db :set-loaded set-loaded)
 (re-frame/reg-event-db :set-window-dims set-window-dims)
+(re-frame/reg-event-db :set-cluster-attrs set-cluster-attrs)
+(re-frame/reg-event-db :set-pitch-cluster set-pitch-cluster)

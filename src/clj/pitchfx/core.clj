@@ -12,18 +12,27 @@
    :user "root"
    :password "Maxx1492!"})
 
+(def cluster-cols (map #(str "cluster_" %) (range 500)))
 
-(def the-query
+(def main-query
   (-> (select :*)
       (from [:clusters :c])
       (merge-join [:id_map :m] [:= :m.mlb_id :c.mlb_id]
                   [:fangraphs :f] [:and
                                    [:= :f.playerid :m.fg_id]
-                                   [:= :f.Season :c.year]])))
+                                   [:= :f.Season :c.year]]
+                  [:pitch_counts :p] [:and
+                                      [:= :c.mlb_id :p.mlb_id]
+                                      [:= :c.year :p.year]])))
 
-(def res (pr-str (j/query db-spec (sql/format the-query))))
+(def cluster-attrs
+  {:select [:*]
+   :from [:cluster_attrs]})
 
 (defroutes app
   (GET "/all_data" []
-       {:body (-> (j/query db-spec (sql/format the-query))
+       {:body (-> (j/query db-spec (sql/format main-query))
+                  (pr-str))})
+  (GET "/cluster_attrs" []
+       {:body (-> (j/query db-spec (sql/format cluster-attrs))
                   (pr-str))}))

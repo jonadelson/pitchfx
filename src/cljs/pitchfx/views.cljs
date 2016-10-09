@@ -55,10 +55,11 @@
     (fn []
       [tab/horizontal-pill-tabs
        :tabs [{:id :data :label "data"}
-              {:id :graphs :label "graphs"}]
+              {:id :graphs :label "graphs"}
+              {:id :pitches :label "pitches"}]
        :model @view
        :on-change #(re-frame/dispatch [:change-view %])
-       :style {:width "125px" :text-align "center"}])))
+       :style {:width (str (/ 250 3) "px") :text-align "center"}])))
 
 (defn cluster-labels
   []
@@ -195,6 +196,14 @@
           :width (str (- w 400) "px")]]))))
 
 
+(defn cluster-count-area
+  [data]
+  (let [window-dims (re-frame/subscribe [:window-dims])]
+    (fn [data]
+      (let [[w h] @window-dims]
+        [:div
+         [box/v-box
+          :children [[chart/cluster-counts data {:height (* h 0.65) :width (- w 600)}]]]]))))
 
 (defn data-area
   []
@@ -204,7 +213,8 @@
     (fn []
       (condp = @view
         :data [dt/data-grid]
-        :graphs [chart-area filtered]))))
+        :graphs [chart-area filtered]
+        :pitches [cluster-count-area filtered]))))
 
 ;;chart/histogram filtered "Fangraphs WAR" :war {:height 600 :width 700 :x-lim [-2 10]}
 

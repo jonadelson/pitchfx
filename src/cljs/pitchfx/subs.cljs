@@ -54,6 +54,14 @@
   [db _]
   (get db :window-dims))
 
+(defn pitch-cluster
+  [db _]
+  (let [pitch-cluster (get db :pitch-cluster)
+        cluster-attrs (get db :cluster-attrs)]
+    (when pitch-cluster
+      (->> (filter #(= pitch-cluster (:cluster %)) cluster-attrs)
+           first))))
+
 (re-frame/reg-sub :chosen-group chosen-group)
 (re-frame/reg-sub :app-data app-data)
 (re-frame/reg-sub :cluster-choices cluster-choices)
@@ -65,3 +73,4 @@
 (re-frame/reg-sub :chosen-stat chosen-stat)
 (re-frame/reg-sub :loaded? loaded?)
 (re-frame/reg-sub :window-dims window-dims)
+(re-frame/reg-sub :pitch-cluster pitch-cluster)

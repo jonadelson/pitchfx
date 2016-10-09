@@ -24,8 +24,10 @@
 
 (defn ^:export init []
   (re-frame/dispatch-sync [:initialize-db])
-  (go (let [response (<! (http/get "/all_data"))]
-        (re-frame/dispatch [:set-app-data (->> response :body r/read-string)])
+  (go (let [all-data (<! (http/get "/all_data"))
+            cluster-attrs (<! (http/get "/cluster_attrs"))]
+        (re-frame/dispatch [:set-app-data (->> all-data :body r/read-string)])
+        (re-frame/dispatch [:set-cluster-attrs (->> cluster-attrs :body r/read-string)])
         (re-frame/dispatch [:set-window-dims [js/window.innerWidth js/window.innerHeight]])
         (re-frame/dispatch [:set-loaded true])))
   (dev-setup)
