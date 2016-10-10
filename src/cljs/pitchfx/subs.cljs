@@ -2,6 +2,9 @@
     (:require-macros [reagent.ratom :refer [reaction]])
     (:require [re-frame.core :as re-frame]))
 
+(def cluster-cols
+  (map #(-> (str "cluster_" %) keyword) (range 500)))
+
 (defn app-data
   [db _]
   (get db :app-data))
@@ -62,6 +65,24 @@
       (->> (filter #(= pitch-cluster (:cluster %)) cluster-attrs)
            first))))
 
+(defn pitch-counts
+  [db _]
+  (let [app-data (get db :app-data)
+        cluster-choice (get db :cluster-choice)
+        group-choice (get db :chosen-group)
+        pitcher-chosen? (get db :pitcher-chosen?)
+        chosen-pitcher (get db :chosen-pitcher)
+        filtered (when (and cluster-choice group-choice)
+                   (->> app-data
+                        (filter #(= (get % (-> (str "c" cluster-choice) keyword))
+                                    (dec group-choice)))))]
+    (->> (map (apply juxt cluster-cols) filtered)
+         (map (fn [c] (map #(if % % 0) c)))
+         (apply map +)
+         (map (fn [i c] {:cluster i :count c}) (range 500))
+         (sort-by #(- (:count %)))
+         (take 50))))
+
 (re-frame/reg-sub :chosen-group chosen-group)
 (re-frame/reg-sub :app-data app-data)
 (re-frame/reg-sub :cluster-choices cluster-choices)
@@ -74,3 +95,4 @@
 (re-frame/reg-sub :loaded? loaded?)
 (re-frame/reg-sub :window-dims window-dims)
 (re-frame/reg-sub :pitch-cluster pitch-cluster)
+(re-frame/reg-sub :pitch-counts pitch-counts)

@@ -209,12 +209,13 @@
   []
   (let [view (re-frame/subscribe [:view])
         filtered (re-frame/subscribe [:filtered])
+        pitch-counts (re-frame/subscribe [:pitch-counts])
         window-dims (re-frame/subscribe [:window-dims])]
     (fn []
       (condp = @view
         :data [dt/data-grid]
         :graphs [chart-area filtered]
-        :pitches [cluster-count-area filtered]))))
+        :pitches [cluster-count-area pitch-counts]))))
 
 ;;chart/histogram filtered "Fangraphs WAR" :war {:height 600 :width 700 :x-lim [-2 10]}
 

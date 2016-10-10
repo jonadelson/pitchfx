@@ -79,12 +79,7 @@
 
 (defn draw-cluster-counts
   [data props]
-  (let [data (->> (map (apply juxt cluster-cols) @data)
-                  (map (fn [c] (map #(if % % 0) c)))
-                  (apply map +)
-                  (map (fn [i c] {:cluster i :count c}) (range 500))
-                  (sort-by #(- (:count %)))
-                  (take 50))
+  (let [data @data
         clusters (map :cluster data)
         counts (map :count data)
         max-val (apply max counts)
