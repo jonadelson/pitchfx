@@ -81,13 +81,17 @@
 (defn draw-cluster-counts
   [data props]
   (let [data @data
-        data (->> (filter #(pos? (:count %)) data))
+        data (->> (filter #(pos? (:count %)) data)
+                  (sort-by #(- (:count %))))
         _ (println (count data))
         margin {:top 10 :right 30 :bottom 30 :left 70}
         width (- (:width props) (:left margin) (:right margin))
         height (- (:height props) (:top margin) (:bottom margin))
         x (-> (map :px data) clj->js)
         y (-> (map :pz data) clj->js)
+        num-lines (min (count x) 20)
+        pfx-x (-> (map :pfx_x data) clj->js)
+        pfx-z (-> (map :pfx_z data) clj->js)
         counts (map :count data)
         sum-counts (apply + counts)
         count-pcts (->> (map #(/ % sum-counts) counts) clj->js)
@@ -121,9 +125,24 @@
                 (.attr "cy" (fn [d] (y-map d)))
                 (.attr "r" (fn [d] (str (* 200 (aget count-pcts d)) "px")))
                 (.on "mouseover" (fn [d] (println
+                                          (aget pfx-x d)
+                                          (aget pfx-z d)
                                           (x-value d)
                                           (aget velos d)
                                           (aget the-pitches d)))))
+        svg (-> (.select js/d3 "svg")
+                (.append "g")
+                (.attr "transform" (str "translate(" (:left margin) "," (:top margin) ")"))
+                (.selectAll "line")
+                (.data (.range js/d3 num-lines))
+                .enter
+                (.append "line")
+                (.style "stroke" (fn [d] (if (pos? (aget pfx-z d)) "green" "red")))
+                (.style "opacity" 0.15)
+                (.attr "x1" (fn [d] (x-map d)))
+                (.attr "y1" (fn [d] (y-map d)))
+                (.attr "x2" (fn [d] (-> (- (x-value d) (/ (aget pfx-x d) 16)) x-scale)))
+                (.attr "y2" (fn [d] (-> (- (y-value d) (/ (aget pfx-z d) 16)) y-scale))))
         svg (-> (.select js/d3 "svg")
                 (.append "rect")
                 (.attr "x" (x-scale (- 1)))

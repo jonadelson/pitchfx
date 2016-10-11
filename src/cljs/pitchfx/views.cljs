@@ -46,8 +46,7 @@
                                                                                   (filter (fn [d] (= [(:mlb_id d) (:year d)] pitcher)))
                                                                                   first
                                                                                   kw
-                                                                                  inc)]))))]
-                    ]]))))
+                                                                                  inc)]))))]]]))))
 
 (defn view-tabs
   []
@@ -209,13 +208,13 @@
   []
   (let [view (re-frame/subscribe [:view])
         filtered (re-frame/subscribe [:filtered])
-        pitch-counts (re-frame/subscribe [:pitch-counts])
+        pitcher-pitches (re-frame/subscribe [:pitcher-pitches])
         window-dims (re-frame/subscribe [:window-dims])]
     (fn []
       (condp = @view
         :data [dt/data-grid]
         :graphs [chart-area filtered]
-        :pitches [cluster-count-area pitch-counts]))))
+        :pitches [cluster-count-area pitcher-pitches]))))
 
 ;;chart/histogram filtered "Fangraphs WAR" :war {:height 600 :width 700 :x-lim [-2 10]}
 

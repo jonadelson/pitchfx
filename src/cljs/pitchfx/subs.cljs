@@ -97,6 +97,41 @@
          (map #(merge {:the-pitch %1} %2) pitch-counts)
          (mapv #(merge %1 %2) pitch-attrs))))
 
+(defn pitcher-pitches
+  [db _]
+  (let [app-data (get db :app-data)
+        cluster-choice (get db :cluster-choice)
+        group-choice (get db :chosen-group)
+        pitcher-chosen? (get db :pitcher-chosen?)
+        chosen-pitcher (get db :chosen-pitcher)
+        filtered (if (and cluster-choice pitcher-chosen?)
+                   (->> app-data
+                        (filter #(= [(:mlb_id %) (:year %)] chosen-pitcher))
+                        first)
+                   (->> app-data
+                        (filter #(= (get % (-> (str "c" cluster-choice) keyword))
+                                    (dec group-choice)))))
+        cluster-attrs (get db :cluster-attrs)
+        pitch-counts (->> (map #(select-keys % pitch-types) cluster-attrs)
+                          (map (fn [p-map]
+                                 (reduce (fn [p [k v]]
+                                           (if (> v (p-map p))
+                                             k
+                                             p)) p-map))))
+        pitch-attrs (map #(select-keys % cluster-props) cluster-attrs)]
+    (if pitcher-chosen?
+      (->> ((apply juxt cluster-cols) filtered)
+           (map #(if % % 0))
+           (map (fn [c] {:count c}))
+           (map #(merge {:the-pitch %1} %2) pitch-counts)
+           (mapv #(merge %1 %2) pitch-attrs))
+      (->> (map (apply juxt cluster-cols) filtered)
+           (map (fn [c] (map #(if % % 0) c)))
+           (apply map +)
+           (map (fn [c] {:count c}))
+           (map #(merge {:the-pitch %1} %2) pitch-counts)
+           (mapv #(merge %1 %2) pitch-attrs)))))
+
 (re-frame/reg-sub :chosen-group chosen-group)
 (re-frame/reg-sub :app-data app-data)
 (re-frame/reg-sub :cluster-choices cluster-choices)
@@ -110,3 +145,4 @@
 (re-frame/reg-sub :window-dims window-dims)
 (re-frame/reg-sub :pitch-cluster pitch-cluster)
 (re-frame/reg-sub :pitch-counts pitch-counts)
+(re-frame/reg-sub :pitcher-pitches pitcher-pitches)

@@ -16,6 +16,7 @@
                          (into []))
    :app-data nil
    :chosen-pitcher nil
+   :chosen-pitcher-2 nil
    :view :data
    :pitcher-chosen? false
    :chosen-stat :war
