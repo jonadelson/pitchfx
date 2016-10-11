@@ -203,7 +203,7 @@
       (let [[w h] @window-dims]
         [:div
          [box/v-box
-          :children [[chart/cluster-counts data {:height (* h 0.65) :width (- w 600)}]]]]))))
+          :children [[chart/cluster-counts data {:height (* h 0.8) :width (- w 800)}]]]]))))
 
 (defn data-area
   []

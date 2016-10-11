@@ -5,6 +5,12 @@
 (def cluster-cols
   (map #(-> (str "cluster_" %) keyword) (range 500)))
 
+(def pitch-types
+  [:fa :ff :ft :fc :fs :si :sl :cu :kc :ep :ch :sc :kn])
+
+(def cluster-props
+  [:start_speed :px :pz :pfx_x :pfx_z :break_length])
+
 (defn app-data
   [db _]
   (get db :app-data))
@@ -75,13 +81,21 @@
         filtered (when (and cluster-choice group-choice)
                    (->> app-data
                         (filter #(= (get % (-> (str "c" cluster-choice) keyword))
-                                    (dec group-choice)))))]
+                                    (dec group-choice)))))
+        cluster-attrs (get db :cluster-attrs)
+        pitch-counts (->> (map #(select-keys % pitch-types) cluster-attrs)
+                          (map (fn [p-map]
+                                 (reduce (fn [p [k v]]
+                                           (if (> v (p-map p))
+                                             k
+                                             p)) p-map))))
+        pitch-attrs (map #(select-keys % cluster-props) cluster-attrs)]
     (->> (map (apply juxt cluster-cols) filtered)
          (map (fn [c] (map #(if % % 0) c)))
          (apply map +)
-         (map (fn [i c] {:cluster i :count c}) (range 500))
-         (sort-by #(- (:count %)))
-         (take 50))))
+         (map (fn [c] {:count c}))
+         (map #(merge {:the-pitch %1} %2) pitch-counts)
+         (mapv #(merge %1 %2) pitch-attrs))))
 
 (re-frame/reg-sub :chosen-group chosen-group)
 (re-frame/reg-sub :app-data app-data)
