@@ -3,7 +3,9 @@
             [reagent.core :as reagent]
             [re-frame.core :as re-frame]
             [re-com.text :as text]
-            [re-com.box :as box]))
+            [re-com.box :as box]
+            [goog.string :as gstring]
+            [goog.string.format]))
 
 (defn draw-histogram
   [data stat props]
@@ -77,82 +79,6 @@
 (def cluster-cols
   (map #(-> (str "cluster_" %) keyword) (range 500)))
 
-
-(defn draw-cluster-counts
-  [data props]
-  (let [data @data
-        data (->> (filter #(pos? (:count %)) data)
-                  (sort-by #(- (:count %))))
-        _ (println (count data))
-        margin {:top 10 :right 30 :bottom 30 :left 70}
-        width (- (:width props) (:left margin) (:right margin))
-        height (- (:height props) (:top margin) (:bottom margin))
-        x (-> (map :px data) clj->js)
-        y (-> (map :pz data) clj->js)
-        num-lines (min (count x) 20)
-        pfx-x (-> (map :pfx_x data) clj->js)
-        pfx-z (-> (map :pfx_z data) clj->js)
-        counts (map :count data)
-        sum-counts (apply + counts)
-        count-pcts (->> (map #(/ % sum-counts) counts) clj->js)
-        velos (-> (map :start_speed data) clj->js)
-        the-pitches (-> (map :the-pitch data) clj->js)
-        x-value (fn [i] (aget x i))
-        x-scale (-> (.scaleLinear js/d3)
-                    (.domain #js [-1.5 1.5])
-                    (.range #js [0 width]))
-        x-map (fn [i] (-> (x-value i) x-scale))
-        x-axis (-> (.axisBottom js/d3)
-                   (.scale x-scale))
-        y-value (fn [i] (aget y i))
-        y-scale (-> (.scaleLinear js/d3)
-                    (.domain #js [1 4])
-                    (.range #js [height 0]))
-        y-map (fn [i] (-> (y-value i) y-scale))
-        y-axis (-> (.axisLeft js/d3)
-                   (.scale y-scale))
-        svg (-> (.select js/d3 ".chart-area")
-                (.append "svg")
-                (.attr "width" (+ width (:left margin) (:right margin)))
-                (.attr "height" (+ height (:top margin) (:bottom margin)))
-                (.append "g")
-                (.attr "transform" (str "translate(" (:left margin) "," (:top margin) ")")))
-        svg (-> (.selectAll svg "circle")
-                (.data (.range js/d3 (count x)))
-                .enter
-                (.append "circle")
-                (.attr "cx" (fn [d] (x-map d)))
-                (.attr "cy" (fn [d] (y-map d)))
-                (.attr "r" (fn [d] (str (* 200 (aget count-pcts d)) "px")))
-                (.on "mouseover" (fn [d] (println
-                                          (aget pfx-x d)
-                                          (aget pfx-z d)
-                                          (x-value d)
-                                          (aget velos d)
-                                          (aget the-pitches d)))))
-        svg (-> (.select js/d3 "svg")
-                (.append "g")
-                (.attr "transform" (str "translate(" (:left margin) "," (:top margin) ")"))
-                (.selectAll "line")
-                (.data (.range js/d3 num-lines))
-                .enter
-                (.append "line")
-                (.style "stroke" (fn [d] (if (pos? (aget pfx-z d)) "green" "red")))
-                (.style "opacity" 0.15)
-                (.attr "x1" (fn [d] (x-map d)))
-                (.attr "y1" (fn [d] (y-map d)))
-                (.attr "x2" (fn [d] (-> (- (x-value d) (/ (aget pfx-x d) 16)) x-scale)))
-                (.attr "y2" (fn [d] (-> (- (y-value d) (/ (aget pfx-z d) 16)) y-scale))))
-        svg (-> (.select js/d3 "svg")
-                (.append "rect")
-                (.attr "x" (x-scale (- 1)))
-                (.attr "y" (y-scale 3.417))
-                (.attr "width" (- (x-scale 1) (x-scale -1)))
-                (.attr "height" (- (y-scale 1.59) (y-scale 3.417)))
-                (.style "fill" "none")
-                (.style "stroke" "black")
-                (.attr "transform" (str "translate(" (:left margin) "," (:top margin) ")")))]))
-
 (def pitch-types
   [:fa :ff :ft :fc :fs :si :sl :cu :kc :ep :ch :sc :kn])
 
@@ -173,32 +99,100 @@
 
 (def pitch-type->name (zipmap pitch-types pitch-names))
 
-(defn cluster-attr
-  []
-  (let [pitch-cluster (re-frame/subscribe [:pitch-cluster])]
-    (fn []
-      (let [x (->> (select-keys @pitch-cluster pitch-types)
-                   (reduce (fn [acc [k v]]
-                             (if v
-                               (assoc acc k v)
-                               acc)) {})
-                   (into [])
-                   (sort-by #(- (second %))))
-            pt (pitch-type->name (-> x first first))
-            velo (:start_speed @pitch-cluster)
-            px (:px @pitch-cluster)
-            pz (:pz @pitch-cluster)
-            pfx_x (:pfx_x @pitch-cluster)
-            pfx_z (:pfx_z @pitch-cluster)
-            bl (:break_length @pitch-cluster)]
-        [:div
-         [:div pt]
-         [:div velo]
-         [:div px]
-         [:div pz]
-         [:div pfx_x]
-         [:div pfx_z]
-         [:div bl]]))))
+(defn draw-cluster-counts
+  [data props class-name]
+  (let [data @data
+        data (->> (filter #(pos? (:count %)) data)
+                  (sort-by #(- (:count %))))
+        margin {:top 10 :right 30 :bottom 30 :left 70}
+        width (- (:width props) (:left margin) (:right margin))
+        height (- (:height props) (:top margin) (:bottom margin))
+        x (-> (map :px data) clj->js)
+        y (-> (map :pz data) clj->js)
+        num-lines (min (count x) 20)
+        c20 (.scaleOrdinal js/d3 (.-schemeCategory10 js/d3))
+        colors (map #(c20 %) (range 20))
+        the-pitches (mapv :the-pitch data)
+        color-map (zipmap pitch-types colors)
+        pfx-x (-> (map :pfx_x data) clj->js)
+        pfx-z (-> (map :pfx_z data) clj->js)
+        counts (map :count data)
+        sum-counts (apply + counts)
+        count-pcts (->> (map #(/ % sum-counts) counts) clj->js)
+        velos (-> (map :start_speed data) clj->js)
+        x-value (fn [i] (aget x i))
+        x-scale (-> (.scaleLinear js/d3)
+                    (.domain #js [-1.5 1.5])
+                    (.range #js [0 width]))
+        x-map (fn [i] (-> (x-value i) x-scale))
+        x-axis (-> (.axisBottom js/d3)
+                   (.scale x-scale))
+        y-value (fn [i] (aget y i))
+        y-scale (-> (.scaleLinear js/d3)
+                    (.domain #js [1 4])
+                    (.range #js [height 0]))
+        y-map (fn [i] (-> (y-value i) y-scale))
+        y-axis (-> (.axisLeft js/d3)
+                   (.scale y-scale))
+        svg (-> (.select js/d3 ".chart-area")
+                (.append "svg")
+                (.attr "class" class-name)
+                (.attr "width" (+ width (:left margin) (:right margin)))
+                (.attr "height" (+ height (:top margin) (:bottom margin)))
+                (.append "g")
+                (.attr "transform" (str "translate(" (:left margin) "," (:top margin) ")")))
+        tip (-> (.select js/d3 ".chart-area")
+                (.append "div")
+                (.attr "class" "tooltip")
+                (.style "opacity" 0))
+        svg (-> (.selectAll svg "circle")
+                (.data (.range js/d3 (count x)))
+                .enter
+                (.append "circle")
+                (.attr "cx" (fn [d] (x-map d)))
+                (.attr "cy" (fn [d] (y-map d)))
+                (.attr "r" (fn [d] (str (* 200 (aget count-pcts d)) "px")))
+                (.style "fill" (fn [d]
+                                 (-> (get the-pitches d) color-map)))
+                (.on "mouseover" (fn [d] (this-as this (let [transition (-> (.transition tip)
+                                                                            (.duration 200)
+                                                                            (.style "opacity" 0.9))
+                                                             h-move (str "pfx_x: " (->> (aget pfx-x d) (gstring/format "%.2f")))
+                                                             v-move (str "pfx_z: " (->> (aget pfx-z d) (gstring/format "%.2f")))
+                                                             p-type (str "pitch: " (->> (get the-pitches d) pitch-type->name))
+                                                             p-speed (str "speed: " (->> (aget velos d) (gstring/format "%.2f")))
+                                                             text [p-type p-speed h-move v-move]]
+                                                         (-> tip
+                                                             (.html (str "<div>" (->> (map #(str "<div>" % "</div>") text) (apply str)) "</div>"))
+                                                             (.style "left" (str (.-pageX (.-event js/d3)) "px"))
+                                                             (.style "top" (str (- (.-pageY (.-event js/d3)) 50) "px")))))))
+                (.on "mouseout" (fn [d] (this-as this
+                                          (-> tip
+                                              .transition
+                                              (.duration 500)
+                                              (.style "opacity" 0))))))
+        svg (-> (.select js/d3 (str "." class-name))
+                (.append "g")
+                (.attr "transform" (str "translate(" (:left margin) "," (:top margin) ")"))
+                (.selectAll "line")
+                (.data (.range js/d3 num-lines))
+                .enter
+                (.append "line")
+                (.style "stroke" (fn [d] (if (pos? (aget pfx-z d)) "green" "red")))
+                (.style "opacity" 0.5)
+                (.attr "x1" (fn [d] (x-map d)))
+                (.attr "y1" (fn [d] (y-map d)))
+                (.attr "x2" (fn [d] (-> (- (x-value d) (/ (aget pfx-x d) 16)) x-scale)))
+                (.attr "y2" (fn [d] (-> (- (y-value d) (/ (aget pfx-z d) 16)) y-scale))))
+        svg (-> (.select js/d3 (str "." class-name))
+                (.append "rect")
+                (.attr "x" (x-scale (- 1)))
+                (.attr "y" (y-scale 3.417))
+                (.attr "width" (- (x-scale 1) (x-scale -1)))
+                (.attr "height" (- (y-scale 1.59) (y-scale 3.417)))
+                (.style "fill" "none")
+                (.style "stroke" "black")
+                (.attr "transform" (str "translate(" (:left margin) "," (:top margin) ")")))]))
 
 
 (defn render-histogram
@@ -207,9 +201,9 @@
   (draw-histogram data stat props))
 
 (defn render-cluster-counts
-  [data props]
-  (-> js/d3 (.select "svg") .remove)
-  (draw-cluster-counts data props))
+  [data props class-name]
+  (-> js/d3 (.select (str "." class-name)) .remove)
+  (draw-cluster-counts data props class-name))
 
 (defn histogram [args]
   (let [dom-node (reagent/atom nil)]
@@ -248,9 +242,9 @@
     (reagent/create-class
      {:component-did-update
       (fn [this old-argv]
-        (let [[_ data props] (reagent/argv this)]
+        (let [[_ data props class-name] (reagent/argv this)]
           ;; This is where we perform our d3.
-          (render-cluster-counts data props)))
+          (render-cluster-counts data props class-name)))
 
       :component-did-mount
       (fn [this]
@@ -259,7 +253,7 @@
           (reset! dom-node node)))
 
       :reagent-render
-      (fn [data props ...]
+      (fn [data props class-name ...]
         ;; Necessary for Reagent to see that we depend on the dom-node and
         ;; args r/atoms.  Note: we don't render D3 at this point.  We have
         ;; to wait for the update.
@@ -271,6 +265,5 @@
           [[text/title
             :label "Cluster Counts"
             :level :level2]
-           [:div.chart-area]
-           [cluster-attr]]
+           [:div.chart-area]]
           :align :center]])})))

@@ -47,6 +47,10 @@
   [db _]
   (get db :chosen-pitcher))
 
+(defn chosen-pitcher-2
+  [db _]
+  (get db :chosen-pitcher-2))
+
 (defn pitcher-chosen?
   [db _]
   (get db :pitcher-chosen?))
@@ -102,9 +106,9 @@
   (let [app-data (get db :app-data)
         cluster-choice (get db :cluster-choice)
         group-choice (get db :chosen-group)
-        pitcher-chosen? (get db :pitcher-chosen?)
+        filter-pitchers? (get db :filter-pitchers?)
         chosen-pitcher (get db :chosen-pitcher)
-        filtered (if (and cluster-choice pitcher-chosen?)
+        filtered (if (and cluster-choice filter-pitchers?)
                    (->> app-data
                         (filter #(= [(:mlb_id %) (:year %)] chosen-pitcher))
                         first)
@@ -119,7 +123,7 @@
                                              k
                                              p)) p-map))))
         pitch-attrs (map #(select-keys % cluster-props) cluster-attrs)]
-    (if pitcher-chosen?
+    (if filter-pitchers?
       (->> ((apply juxt cluster-cols) filtered)
            (map #(if % % 0))
            (map (fn [c] {:count c}))
@@ -131,6 +135,23 @@
            (map (fn [c] {:count c}))
            (map #(merge {:the-pitch %1} %2) pitch-counts)
            (mapv #(merge %1 %2) pitch-attrs)))))
+
+(defn filter-pitchers?
+  [db _]
+  (get db :filter-pitchers?))
+
+(defn pitcher-sugg
+  [db _]
+  (get db :pitcher-sugg))
+
+(defn pitcher-chosen-2?
+  [db _]
+  (get db :pitcher-chosen-2?))
+
+(defn id->name
+  [db _]
+  (let [app-data (get db :app-data)]
+    (zipmap (map :mlb_id app-data) (map :name app-data))))
 
 (re-frame/reg-sub :chosen-group chosen-group)
 (re-frame/reg-sub :app-data app-data)
@@ -146,3 +167,8 @@
 (re-frame/reg-sub :pitch-cluster pitch-cluster)
 (re-frame/reg-sub :pitch-counts pitch-counts)
 (re-frame/reg-sub :pitcher-pitches pitcher-pitches)
+(re-frame/reg-sub :filter-pitchers? filter-pitchers?)
+(re-frame/reg-sub :pitcher-sugg pitcher-sugg)
+(re-frame/reg-sub :chosen-pitcher-2 chosen-pitcher-2)
+(re-frame/reg-sub :pitcher-chosen-2? pitcher-chosen-2?)
+(re-frame/reg-sub :id->name id->name)

@@ -9,22 +9,23 @@
             [clojure.string :as s]
             [re-com.misc :as misc]
             [pitchfx.charts :as chart]
-            [re-com.text :as text]
-            ))
+            [re-com.text :as text]))
 
 (defn autocomplete
   []
   (let [data (re-frame/subscribe [:app-data])
         cluster-choice (re-frame/subscribe [:cluster-choice])
-        pitcher-chosen? (re-frame/subscribe [:pitcher-chosen?])
-        chosen-pitcher (re-frame/subscribe [:chosen-pitcher])]
+        filter-pitchers? (re-frame/subscribe [:filter-pitchers?])
+        chosen-pitcher (re-frame/subscribe [:chosen-pitcher])
+        pitcher-sugg (re-frame/subscribe [:pitcher-sugg])
+        id->name (re-frame/subscribe [:id->name])]
     (fn []
       (when @data
         [box/v-box
          :children [[misc/checkbox
-                     :model @pitcher-chosen?
+                     :model @filter-pitchers?
                      :label "Enable Pitcher Filtering"
-                     :on-change #(re-frame/dispatch [:set-pitcher-chosen (not @pitcher-chosen?)])]
+                     :on-change #(re-frame/dispatch [:set-filter-pitchers (not @filter-pitchers?)])]
                     [ac/typeahead
                      :data-source (fn [str]
                                     (->> (map #(select-keys % [:mlb_id :name :year]) @data)
@@ -34,14 +35,14 @@
                                           [:div (str (:name d) " (" (:year d) ")")])
                      :suggestion-to-string (fn [d] (str (:name d)))
                      :change-on-blur? true
-                     :width "230px"
-                     :disabled? (not @pitcher-chosen?)
+                     :width "250px"
+                     :disabled? (not @filter-pitchers?)
                      :model {:mlb_id 12345 :name "Filter by Pitcher ..." :year 1234}
                      :on-change #(do
                                    (let [pitcher [(:mlb_id %) (:year %)]
                                          kw (-> (str "c" @cluster-choice) keyword)]
                                      (re-frame/dispatch [:change-pitcher pitcher])
-                                     (when (and @cluster-choice @pitcher-chosen?)
+                                     (when (and @cluster-choice @filter-pitchers?)
                                        (re-frame/dispatch [:set-chosen-group (->> @data
                                                                                   (filter (fn [d] (= [(:mlb_id d) (:year d)] pitcher)))
                                                                                   first
@@ -196,13 +197,13 @@
 
 
 (defn cluster-count-area
-  [data]
+  [data class-name]
   (let [window-dims (re-frame/subscribe [:window-dims])]
-    (fn [data]
+    (fn [data class-name]
       (let [[w h] @window-dims]
         [:div
          [box/v-box
-          :children [[chart/cluster-counts data {:height (* h 0.8) :width (- w 800)}]]]]))))
+          :children [[chart/cluster-counts data {:height (* h 0.8) :width (- w 800)} class-name]]]]))))
 
 (defn data-area
   []
@@ -214,7 +215,7 @@
       (condp = @view
         :data [dt/data-grid]
         :graphs [chart-area filtered]
-        :pitches [cluster-count-area pitcher-pitches]))))
+        :pitches [cluster-count-area pitcher-pitches "chart-1"]))))
 
 ;;chart/histogram filtered "Fangraphs WAR" :war {:height 600 :width 700 :x-lim [-2 10]}
 

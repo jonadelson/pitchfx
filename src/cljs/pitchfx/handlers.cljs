@@ -17,8 +17,11 @@
    :app-data nil
    :chosen-pitcher nil
    :chosen-pitcher-2 nil
+   :pitcher-sugg nil
    :view :data
    :pitcher-chosen? false
+   :pitcher-chosen-2? false
+   :filter-pitchers? false
    :chosen-stat :war
    :window-dims nil
    :cluster-attrs nil
@@ -76,6 +79,22 @@
   [db [_ c]]
   (assoc db :pitch-cluster c))
 
+(defn change-pitcher-2
+  [db [_ p]]
+  (assoc db :chosen-pitcher-2 p))
+
+(defn set-pitcher-chosen-2
+  [db [_ t]]
+  (assoc db :pitcher-chosen-2? t))
+
+(defn set-filter-pitchers
+  [db [_ t]]
+  (assoc db :filter-pitchers? t))
+
+(defn set-pitcher-sugg
+  [db [_ p]]
+  (assoc db :pitcher-sugg p))
+
 (re-frame/reg-event-db :initialize-db (fn [_] app-db))
 (re-frame/reg-event-db :set-app-data set-app-data)
 (re-frame/reg-event-db :set-cluster-choice set-cluster-choice)
@@ -90,3 +109,7 @@
 (re-frame/reg-event-db :set-window-dims set-window-dims)
 (re-frame/reg-event-db :set-cluster-attrs set-cluster-attrs)
 (re-frame/reg-event-db :set-pitch-cluster set-pitch-cluster)
+(re-frame/reg-event-db :change-pitcher-2 change-pitcher-2)
+(re-frame/reg-event-db :set-pitcher-chosen-2 set-pitcher-chosen-2)
+(re-frame/reg-event-db :set-filter-pitchers set-filter-pitchers)
+(re-frame/reg-event-db :set-pitcher-sugg set-pitcher-sugg)
