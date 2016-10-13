@@ -9,6 +9,7 @@
             [compojure.route :as route
              :refer [resources]]
             [ring.adapter.jetty :refer [run-jetty]]
+            [config.core :refer [env]]
             )
   (:gen-class))
 
@@ -47,5 +48,5 @@
   (resources "/"))
 
 (defn -main [& args]
-  (let [port 3000]
+  (let [port (Integer/parseInt (or (env :port) "3000"))]
     (run-jetty app {:port port :join? false})))

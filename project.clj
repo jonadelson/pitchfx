@@ -14,7 +14,8 @@
                  [re-com "0.9.0"]
                  [cljsjs/fixed-data-table "0.6.3-0"
                   :exclusions [cljsjs/react]]
-                 [cljsjs/d3 "4.2.2-0"]]
+                 [cljsjs/d3 "4.2.2-0"]
+                 [yogthos/config "0.8"]]
 
   :plugins [[lein-cljsbuild "1.1.4"]
             [lein-ring "0.8.10"]]
