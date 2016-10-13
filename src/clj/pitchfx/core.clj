@@ -40,5 +40,5 @@
                   (pr-str))}))
 
 (defn -main [& args]
-  (let [port "3000"]
+  (let [port 3000]
     (run-jetty app {:port port :join? false})))
