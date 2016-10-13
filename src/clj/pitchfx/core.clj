@@ -4,7 +4,9 @@
             [honeysql.helpers :refer :all]
             [compojure.core :as c
              :refer [defroutes GET]]
-            [compojure.handler :as handler]))
+            [compojure.handler :as handler]
+            [ring.adapter.jetty :refer [run-jetty]])
+  (:gen-class))
 
 (def db-spec
   {:subprotocol "mysql"
@@ -36,3 +38,7 @@
   (GET "/cluster_attrs" []
        {:body (-> (j/query db-spec (sql/format cluster-attrs))
                   (pr-str))}))
+
+(defn -main [& args]
+  (let [port "3000"]
+    (run-jetty app {:port port :join? false})))

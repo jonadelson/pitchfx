@@ -80,20 +80,20 @@
   (map #(-> (str "cluster_" %) keyword) (range 500)))
 
 (def pitch-types
-  [:fa :ff :ft :fc :fs :si :sl :cu :kc :ep :ch :sc :kn])
+  [:fa :ff :ft :fc :ch :si :sl :cu :kc :ep :fs :sc :kn])
 
 (def pitch-names
   ["Fastball"
    "4-Seam Fastball"
    "2-Seam Fastball"
    "Cut Fastball"
-   "Split-finger Fastball"
+   "Change-up"
    "Sinker"
    "Slider"
    "Curveball"
    "Knuckle Curve"
    "Ephuus"
-   "Change-up"
+   "Split-finger Fastball"
    "Screwball"
    "Knuckleball"])
 
