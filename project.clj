@@ -21,8 +21,6 @@
 
   :min-lein-version "2.5.3"
 
-  :main pitchfx.core
-
   :source-paths ["src/clj"]
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
