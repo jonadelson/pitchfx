@@ -29,6 +29,8 @@
              :server-port 3000
              :ring-handler pitchfx.core/app}
 
+  :main pitchfx.core
+
   :ring {:handler pitchfx.core/app}
 
   :profiles

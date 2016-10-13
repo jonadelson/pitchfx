@@ -5,7 +5,11 @@
             [compojure.core :as c
              :refer [defroutes GET]]
             [compojure.handler :as handler]
-            [ring.adapter.jetty :refer [run-jetty]])
+            [clojure.java.io :as io]
+            [compojure.route :as route
+             :refer [resources]]
+            [ring.adapter.jetty :refer [run-jetty]]
+            )
   (:gen-class))
 
 (def db-spec
@@ -37,7 +41,10 @@
                   (pr-str))})
   (GET "/cluster_attrs" []
        {:body (-> (j/query db-spec (sql/format cluster-attrs))
-                  (pr-str))}))
+                  (pr-str))})
+  (GET "/" []
+       (slurp (io/resource "public/index.html")))
+  (resources "/"))
 
 (defn -main [& args]
   (let [port 3000]
